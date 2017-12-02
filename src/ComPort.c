@@ -92,7 +92,7 @@ BOOL ComPort_readData(COMPORT_T *comPort, LPVOID comRxData, DWORD comRxBytes)
 {
     DWORD comErrors;        /* エラーコード */
     COMSTAT comStat;        /* 通信状態バッファ */
-    DWORD comReadBytes;     /* シリアルポートに読込んだバイト数 */
+    DWORD comReadBytes;     /* シリアルポートから読込んだバイト数 */
     BOOL retval;
     BOOL result;
 

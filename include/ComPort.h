@@ -54,7 +54,7 @@ BOOL ComPort_closeComPort(COMPORT_T *comPort);
 /**
  * @brief   シリアルポートから受信データを読込む
  * @param[in]       comPort         シリアルポート情報構造体のポインタ
- * @param[in]       comRxData       受信データバッファのポインタ
+ * @param[out]      comRxData       受信データバッファのポインタ
  * @param[in]       comRxBytes      受信データのバイト数
  * @retval          TRUE            正常終了
  * @retval          FALSE           異常終了
