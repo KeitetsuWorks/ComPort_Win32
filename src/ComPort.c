@@ -14,22 +14,32 @@
 
 
 /**
- * @brief   シリアルポートの制御設定を行う
- * @param[in,out]   comPort         シリアルポート情報構造体
+ * @name    送受信バッファサイズ
  */
-static VOID ComPort_setDCB(COMPORT_T *comPort);
+/*! @{ */
+#define COM_RX_BUF_SIZE         8192    /*!< 受信バッファサイズ */
+#define COM_TX_BUF_SIZE         8192    /*!< 送信バッファサイズ */
+/*! @} */
 
 
 /**
  * @brief   シリアルポートのタイムアウト設定を行う
- * @param[in,out]   comPort         シリアルポート情報構造体
+ * @param[in]       comPort         シリアルポート情報構造体のポインタ
  */
-static VOID ComPort_setTimeouts(COMPORT_T *comPort);
+static VOID ComPort_setTimeouts(COMPORT comPort);
 
 
-BOOL ComPort_openComPort(COMPORT_T *comPort, LPCTSTR comName)
+COMPORT ComPort_openComPort(LPCTSTR comName, DWORD comBaudRate)
 {
+    COMPORT comPort;
     BOOL retval;
+
+    /* インスタンスの生成 */
+    comPort = (COMPORT)malloc(sizeof(COMPORT_T));
+    if (comPort == NULL) {
+        return NULL;
+    }
+    ZeroMemory(comPort, sizeof(COMPORT_T));
 
     comPort->comHandle = CreateFile(
         comName,                        /* シリアルポート */
@@ -41,17 +51,25 @@ BOOL ComPort_openComPort(COMPORT_T *comPort, LPCTSTR comName)
         0                               /* テンプレートファイルのハンドル */
     );
     if (comPort->comHandle == INVALID_HANDLE_VALUE) {
-        return FALSE;
+        free(comPort);
+        return NULL;
     }
 
-    /* シリアルポートの通信パラメータの初期化（送受信バッファの設定） */
+    /* シリアルポートの通信パラメータの初期化 */
+    comPort->comBaudRate = comBaudRate;
+    comPort->comByteSize = 8;
+    comPort->comParity = NOPARITY;
+    comPort->comStopBits = ONESTOPBIT;
+
+    /* 送受信バッファの設定 */
     retval = SetupComm(
         comPort->comHandle,             /* シリアルポートのハンドラ */
-        comPort->comRxBufSize,          /* 受信バッファサイズ */
-        comPort->comTxBufSize           /* 送信バッファサイズ */
+        COM_RX_BUF_SIZE,                /* 受信バッファサイズ */
+        COM_TX_BUF_SIZE                 /* 送信バッファサイズ */
     );
     if (retval == FALSE) {
-        return FALSE;
+        ComPort_closeComPort(comPort);
+        return NULL;
     }
 
     /* 送受信バッファの初期化 */
@@ -60,7 +78,8 @@ BOOL ComPort_openComPort(COMPORT_T *comPort, LPCTSTR comName)
         PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR
     );
     if (retval == FALSE) {
-        return FALSE;
+        ComPort_closeComPort(comPort);
+        return NULL;
     }
 
     /* シリアルポートの制御設定 */
@@ -69,26 +88,23 @@ BOOL ComPort_openComPort(COMPORT_T *comPort, LPCTSTR comName)
     /* シリアルポートのタイムアウト設定 */
     ComPort_setTimeouts(comPort);
 
-    return TRUE;
+    return comPort;
 }
 
 
-BOOL ComPort_closeComPort(COMPORT_T *comPort)
+COMPORT ComPort_closeComPort(COMPORT comPort)
 {
-    BOOL result;
-
-    result = TRUE;
-
     if (comPort->comHandle != INVALID_HANDLE_VALUE) {
         CloseHandle(comPort->comHandle);
-        comPort->comHandle = INVALID_HANDLE_VALUE;
+        free(comPort);
+        comPort = NULL;
     }
 
-    return result;
+    return comPort;
 }
 
 
-BOOL ComPort_readData(COMPORT_T *comPort, LPVOID comRxData, DWORD comRxBytes)
+BOOL ComPort_readData(COMPORT comPort, LPVOID comRxData, DWORD comRxBytes)
 {
     DWORD comErrors;        /* エラーコード */
     COMSTAT comStat;        /* 通信状態バッファ */
@@ -114,7 +130,7 @@ BOOL ComPort_readData(COMPORT_T *comPort, LPVOID comRxData, DWORD comRxBytes)
 }
 
 
-BOOL ComPort_writeData(COMPORT_T *comPort, LPVOID comTxData, DWORD comTxBytes)
+BOOL ComPort_writeData(COMPORT comPort, LPVOID comTxData, DWORD comTxBytes)
 {
     DWORD comErrors;        /* エラーコード */
     COMSTAT comStat;        /* 通信状態バッファ */
@@ -140,53 +156,57 @@ BOOL ComPort_writeData(COMPORT_T *comPort, LPVOID comTxData, DWORD comTxBytes)
 }
 
 
-static void ComPort_setDCB(COMPORT_T *comPort)
+void ComPort_setDCB(COMPORT comPort)
 {
+    DCB comDCB;                 /* シリアルポートの制御設定 */
+
     if (comPort->comHandle != INVALID_HANDLE_VALUE) {
         /* DCBの取得 */
-        GetCommState(comPort->comHandle, &(comPort->comDCB));
+        GetCommState(comPort->comHandle, &comDCB);
 
-        comPort->comDCB.BaudRate = comPort->comBaudRate;
-        comPort->comDCB.ByteSize = comPort->comByteSize;
-        comPort->comDCB.Parity = comPort->comParity;
-        comPort->comDCB.StopBits = comPort->comStopBits;
+        comDCB.BaudRate = comPort->comBaudRate;
+        comDCB.ByteSize = comPort->comByteSize;
+        comDCB.Parity = comPort->comParity;
+        comDCB.StopBits = comPort->comStopBits;
 
-        comPort->comDCB.fBinary = TRUE;
+        comDCB.fBinary = TRUE;
         if (comPort->comParity == NOPARITY) {
-            comPort->comDCB.fParity = FALSE;
+            comDCB.fParity = FALSE;
         }
         else {
-            comPort->comDCB.fParity = TRUE;
+            comDCB.fParity = TRUE;
         }
-        comPort->comDCB.fOutxCtsFlow = FALSE;
-        comPort->comDCB.fOutxDsrFlow = FALSE;
-        comPort->comDCB.fDtrControl = DTR_CONTROL_DISABLE;
-        comPort->comDCB.fDsrSensitivity = FALSE;
-        comPort->comDCB.fRtsControl = RTS_CONTROL_DISABLE;
-        comPort->comDCB.fAbortOnError = TRUE;
+        comDCB.fOutxCtsFlow = FALSE;
+        comDCB.fOutxDsrFlow = FALSE;
+        comDCB.fDtrControl = DTR_CONTROL_DISABLE;
+        comDCB.fDsrSensitivity = FALSE;
+        comDCB.fRtsControl = RTS_CONTROL_DISABLE;
+        comDCB.fAbortOnError = TRUE;
 
         /* DCBの設定 */
-        SetCommState(comPort->comHandle, &(comPort->comDCB));
+        SetCommState(comPort->comHandle, &comDCB);
     }
     
     return;
 }
 
 
-static void ComPort_setTimeouts(COMPORT_T *comPort)
+static void ComPort_setTimeouts(COMPORT comPort)
 {
+    COMMTIMEOUTS comTimeouts;   /* シリアルポートのタイムアウト設定 */
+
     if (comPort->comHandle != INVALID_HANDLE_VALUE) {
         /* タイムアウトパラメータの取得 */
-        GetCommTimeouts(comPort->comHandle, &(comPort->comTimeouts));
+        GetCommTimeouts(comPort->comHandle, &comTimeouts);
 
-        comPort->comTimeouts.ReadIntervalTimeout = 100;
-        comPort->comTimeouts.ReadTotalTimeoutMultiplier = 10;
-        comPort->comTimeouts.ReadTotalTimeoutConstant = 100;
-        comPort->comTimeouts.WriteTotalTimeoutMultiplier = 10;
-        comPort->comTimeouts.WriteTotalTimeoutConstant = 100;
+        comTimeouts.ReadIntervalTimeout = 100;
+        comTimeouts.ReadTotalTimeoutMultiplier = 10;
+        comTimeouts.ReadTotalTimeoutConstant = 100;
+        comTimeouts.WriteTotalTimeoutMultiplier = 10;
+        comTimeouts.WriteTotalTimeoutConstant = 100;
 
         /* タイムアウトパラメータの設定 */
-        SetCommTimeouts(comPort->comHandle, &(comPort->comTimeouts));
+        SetCommTimeouts(comPort->comHandle, &comTimeouts);
     }
 
     return;

@@ -18,37 +18,36 @@
  *
  * @typedef COMPORT_T
  * @brief   シリアルポート情報構造体
+ *
+ * @typedef COMPORT
+ * @brief   シリアルポート情報構造体のポインタ
  */
 typedef struct ComPort_st {
     HANDLE comHandle;           /*!< シリアルポートのハンドラ */
-    DCB comDCB;                 /*!< シリアルポートの制御設定 */
-    COMMTIMEOUTS comTimeouts;   /*!< シリアルポートのタイムアウト設定 */
-    DWORD comRxBufSize;         /*!< 受信バッファサイズ */
-    DWORD comTxBufSize;         /*!< 送信バッファサイズ */
     DWORD comBaudRate;          /*!< ボーレート */ 
     BYTE comByteSize;           /*!< データビット */
     BYTE comParity;             /*!< パリティビット */
     BYTE comStopBits;           /*!< ストップビット */
-} COMPORT_T;
+} COMPORT_T, *COMPORT;
 
 
 /**
  * @brief   シリアルポートを開く
- * @param[in,out]   comPort         シリアルポート情報構造体のポインタ
  * @param[in]       comName         シリアルポート名
- * @retval          TRUE            正常終了
- * @retval          FALSE           異常終了
+ * @param[in]       comBaudRate     ボーレート
+ * @retval          NULL            異常終了
+ * @retval          Others          シリアルポート情報構造体のポインタ
  */
-BOOL ComPort_openComPort(COMPORT_T *comPort, LPCTSTR comName);
+COMPORT ComPort_openComPort(LPCTSTR comName, DWORD comBaudRate);
 
 
 /**
  * @brief   シリアルポートを閉じる
- * @param[in,out]   comPort         シリアルポート情報構造体のポインタ
- * @retval          TRUE            正常終了
- * @retval          FALSE           異常終了
+ * @param[in]       comPort         シリアルポート情報構造体のポインタ
+ * @retval          NULL            正常終了
+ * @retval          Others          異常終了
  */
-BOOL ComPort_closeComPort(COMPORT_T *comPort);
+COMPORT ComPort_closeComPort(COMPORT comPort);
 
 
 /**
@@ -59,7 +58,7 @@ BOOL ComPort_closeComPort(COMPORT_T *comPort);
  * @retval          TRUE            正常終了
  * @retval          FALSE           異常終了
  */
-BOOL ComPort_readData(COMPORT_T *comPort, LPVOID comRxData, DWORD comRxBytes);
+BOOL ComPort_readData(COMPORT comPort, LPVOID comRxData, DWORD comRxBytes);
 
 
 /**
@@ -70,6 +69,13 @@ BOOL ComPort_readData(COMPORT_T *comPort, LPVOID comRxData, DWORD comRxBytes);
  * @retval          TRUE            正常終了
  * @retval          FALSE           異常終了
  */
-BOOL ComPort_writeData(COMPORT_T *comPort, LPVOID comTxData, DWORD comTxBytes);
+BOOL ComPort_writeData(COMPORT comPort, LPVOID comTxData, DWORD comTxBytes);
+
+
+/**
+ * @brief   シリアルポートの制御設定を行う
+ * @param[in]       comPort         シリアルポート情報構造体のポインタ
+ */
+VOID ComPort_setDCB(COMPORT comPort);
 
 #endif	/* __COMPORT_H__ */
