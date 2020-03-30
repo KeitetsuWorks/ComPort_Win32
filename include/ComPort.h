@@ -23,11 +23,11 @@
  * @brief   シリアルポート情報構造体のポインタ
  */
 typedef struct ComPort_st {
-    HANDLE comHandle;           /*!< シリアルポートのハンドラ */
-    DWORD comBaudRate;          /*!< ボーレート */ 
-    BYTE comByteSize;           /*!< データビット */
-    BYTE comParity;             /*!< パリティビット */
-    BYTE comStopBits;           /*!< ストップビット */
+    HANDLE comHandle;           /**< シリアルポートのハンドラ */
+    DWORD comBaudRate;          /**< ボーレート */ 
+    BYTE comByteSize;           /**< データビット */
+    BYTE comParity;             /**< パリティビット */
+    BYTE comStopBits;           /**< ストップビット */
 } COMPORT_T, *COMPORT;
 
 

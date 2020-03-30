@@ -16,10 +16,10 @@
 /**
  * @name    送受信バッファサイズ
  */
-/*! @{ */
-#define COM_RX_BUF_SIZE         8192    /*!< 受信バッファサイズ */
-#define COM_TX_BUF_SIZE         8192    /*!< 送信バッファサイズ */
-/*! @} */
+/** @{ */
+#define COM_RX_BUF_SIZE         8192    /**< 受信バッファサイズ */
+#define COM_TX_BUF_SIZE         8192    /**< 送信バッファサイズ */
+/** @} */
 
 
 /**
